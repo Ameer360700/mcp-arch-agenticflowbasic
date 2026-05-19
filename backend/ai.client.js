@@ -1,11 +1,13 @@
 import axios from "axios";
 
+//Here we decide the model and the url of Ollama
 export class OllamaClient {
   constructor(modelName = "llama3.2:3b", url = "http://localhost:11434/api/generate") {
     this.modelName = modelName;
     this.url = url;
   }
-
+  //this section, given the prompt the axios tool shoot a POST request to the local AI engine,
+  // waits for the answer and returns the text response
   async ask(prompt) {
     const response = await axios.post(this.url, {
       model: this.modelName,
@@ -14,7 +16,9 @@ export class OllamaClient {
     });
     return response.data.response;
   }
-
+  //this function forces the model to behave like an intelligent agent, rather than a simple chatbot,
+  // we can provide rules on how to behave accoriding to the prompt etc, using the given prompt,
+  // based on the available tools, response is also given
   async getToolDecision(userPrompt, availableTools) {
   const prompt = `Available tools: ${JSON.stringify(availableTools)}.
 
@@ -40,7 +44,7 @@ export class OllamaClient {
   let cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   return JSON.parse(cleaned);
 }
-
+  //instead of providing a direct answer, a summarized meainingful text along with the answer
   async getSummarizeResult(userPrompt,answer) {
     const prompt = `You are summariser, based on the question ${userPrompt}. 
     you should summarise the answer '${answer}'in plain text.

@@ -5,9 +5,11 @@ import cors from "cors";
 import { z } from "zod";
 import { loadAllPlugins, getAllCategories, getToolsByCategory } from "./tools/index.js";
 
+//establishes foundational framework for webserver
 const app = express();
 app.use(cors());
 
+// an empty phase book is created, to track active users/clients connected to the stream
 const transports = new Map();
 
 async function startServer() {
@@ -25,7 +27,8 @@ async function startServer() {
   
   // Register all plugins as tools
   for (const plugin of plugins) {
-    // Build Zod schema dynamically from params
+    // Build Zod schema dynamically from params -> structural definitons to prevent AI
+    // sending corrupted data, basically a validation  
     const schemaObj = {};
     for (const [paramName, paramType] of Object.entries(plugin.params)) {
       if (paramType === "number") schemaObj[paramName] = z.number();
@@ -41,6 +44,8 @@ async function startServer() {
         category: plugin.category,
         inputSchema: schemaObj
       },
+      // if any type of error is present, it wont crash the server, instead it gracefully embraces
+      // the error and displays the error message
       async (args) => {
         try {
           const result = plugin.handler(args);
@@ -93,7 +98,7 @@ async function startServer() {
     res.json({ category: req.params.name, tools: tools.map(t => t.name) });
   });
   
-  // Health check
+  // Health check, status of the server 
   app.get("/health", (req, res) => {
     res.json({ 
       status: "ok", 
@@ -102,7 +107,7 @@ async function startServer() {
       categories: getAllCategories(plugins)
     });
   });
-  
+  //we gave a port number for this server
   const PORT = 4000;
   app.listen(PORT, () => {
     console.log(`\n🚀 Server running on http://localhost:${PORT}`);
