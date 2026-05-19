@@ -103,7 +103,7 @@ async function startServer() {
     });
   });
   
-  const PORT = 3000;
+  const PORT = 4000;
   app.listen(PORT, () => {
     console.log(`\n🚀 Server running on http://localhost:${PORT}`);
     console.log(`📡 SSE endpoint: http://localhost:${PORT}/sse`);
@@ -111,5 +111,4 @@ async function startServer() {
     console.log(`📂 Categories: ${getAllCategories(plugins).join(", ")}\n`);
   });
 }
-
 startServer().catch(console.error);

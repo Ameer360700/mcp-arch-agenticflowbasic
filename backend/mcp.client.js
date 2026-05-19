@@ -2,7 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 export class CalculatorMCPClient {
-  constructor(serverUrl = "http://localhost:3000/sse") {
+  constructor(serverUrl = "http://localhost:4000/sse") {
     this.serverUrl = serverUrl;
     this.client = null;
   }
