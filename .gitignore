@@ -1,2 +1,6 @@
 backend/node_modules/
 mcp-server/node_modules/
+node_modules/
+*.db
+package-lock.json
+tempCodeRunnerFile.js
