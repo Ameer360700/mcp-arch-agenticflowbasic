@@ -1,46 +1,49 @@
 import readline from 'readline';
 import { AgentMCPClient } from './mcp.client.js';
-import { OllamaClient } from './ai.client.js';
+import { AgentClient } from './ai.client.js';
 
 async function main() {
   console.log("=== MCP Agentic Flow ===\n");
-  
-  // 1. Initialize clients
-  const mcp = new AgentMCPClient();
-  const ai = new OllamaClient();
 
-  // 2. Connect to MCP server
+  const mcp = new AgentMCPClient();
+  const ai = new AgentClient();
+
   await mcp.connect();
 
-  // 3. Get available tools
   const tools = await mcp.listTools();
   console.log("Available tools:", tools.map(t => t.name).join(", "));
 
-  // 4. Setup user input
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
 
   const askUser = (q) => new Promise(resolve => rl.question(q, resolve));
-  //any number of questions can be asked, it asks y/n if you want to go further or not
+
   let running = true;
   while (running) {
-    const userPrompt = await askUser("\n🤖 Enter Prompt: ");
+    const userPrompt = await askUser("\nEnter prompt: ");
     if (!userPrompt.trim()) continue;
 
-    // mcp client to AI Call making the decision
-    const decision = await ai.getToolDecision(userPrompt, tools);
-    console.log(`🤖 AI decides: ${decision.name}(${decision.a}, ${decision.b})`);
+    // Step 1: get full plan from AI
+    const plan = await ai.getPlan(userPrompt, tools);
+    console.log("📋 Plan:", JSON.stringify(plan, null, 2));
 
-    // mcp client to MCP server call, here the tool needed for this decision is fetched
-    const result = await mcp.callTool(decision.name, { a: decision.a, b: decision.b });
-   
+    // Step 2: execute each step, chaining results via __prev__
+    let prevResult = null;
+    for (let i = 0; i < plan.length; i++) {
+      const step = plan[i];
 
-    // mcp client to AI Call , giving the summarized result after getting answer from the mcp-server
-    const revisedResult = await ai.getSummarizeResult(userPrompt, result);
-    console.log(`✅ Result: ${revisedResult}`);
-    
+      const a = step.a === "__prev__" ? prevResult : step.a;
+      const b = step.b === "__prev__" ? prevResult : step.b;
+
+      console.log(`⚙️  Step ${i + 1}: ${step.name}(${a}, ${b})`);
+      prevResult = Number(await mcp.callTool(step.name, { a: Number(a), b: Number(b) }));
+      console.log(`   → ${prevResult}`);
+    }
+
+    console.log(`\n✅ Answer: ${prevResult}`);
+
     const again = await askUser("\nContinue? (yes/no): ");
     if (again.toLowerCase() !== 'yes') running = false;
   }
