@@ -1,16 +1,16 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
-export class CalculatorMCPClient {
+export class AgentMCPClient {
   //inializing the url for the mcp-server
-  constructor(serverUrl = "http://localhost:4000/sse") {
+  constructor(serverUrl = "http://localhost:4001/sse") {
     this.serverUrl = serverUrl;
     this.client = null;
   }
   //naming the server with its version
   async connect() {
     this.client = new Client(
-      { name: "mcp-client", version: "1.0.0" },
+      { name: "mcp-agent-client", version: "1.0.0" },
       { capabilities: {} }
     );
     //establishing the connection of mcp-client
@@ -20,7 +20,7 @@ export class CalculatorMCPClient {
       clientInfo: { name: "mcp-client", version: "1.0.0" }
     });
     
-    console.log("✅ MCP Client connected");
+    console.log("✅ MCP Agent Client connected");
   }
   //list of available tools
   async listTools() {

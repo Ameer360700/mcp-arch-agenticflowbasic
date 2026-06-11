@@ -21,7 +21,7 @@ async function startServer() {
   
   // Create MCP Server
   const mcpServer = new McpServer({
-    name: "calculator-sse-server",
+    name: "agent-sse-server",
     version: "1.0.0"
   });
   
@@ -102,17 +102,17 @@ async function startServer() {
   app.get("/health", (req, res) => {
     res.json({ 
       status: "ok", 
-      server: "calculator-sse-server",
+      server: "agent-sse-server",
       plugins: plugins.length,
       categories: getAllCategories(plugins)
     });
   });
   //we gave a port number for this server
-  const PORT = 4000;
+  const PORT = 4001;
   app.listen(PORT, () => {
-    console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+    console.log(`\n🤖 Agent Server running on http://localhost:${PORT}`);
     console.log(`📡 SSE endpoint: http://localhost:${PORT}/sse`);
-    console.log(`🔌 Total plugins: ${plugins.length}`);
+    console.log(`🔧 Total agent tools: ${plugins.length}`);
     console.log(`📂 Categories: ${getAllCategories(plugins).join(", ")}\n`);
   });
 }

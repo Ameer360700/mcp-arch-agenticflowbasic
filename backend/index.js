@@ -1,12 +1,12 @@
 import readline from 'readline';
-import { CalculatorMCPClient } from './mcp.client.js';
+import { AgentMCPClient } from './mcp.client.js';
 import { OllamaClient } from './ai.client.js';
 
 async function main() {
-  console.log("=== MCP Calculator with Clean Architecture ===\n");
-
+  console.log("=== MCP Agentic Flow ===\n");
+  
   // 1. Initialize clients
-  const mcp = new CalculatorMCPClient();
+  const mcp = new AgentMCPClient();
   const ai = new OllamaClient();
 
   // 2. Connect to MCP server
@@ -26,7 +26,7 @@ async function main() {
   //any number of questions can be asked, it asks y/n if you want to go further or not
   let running = true;
   while (running) {
-    const userPrompt = await askUser("\n🧮 Math question: ");
+    const userPrompt = await askUser("\n🤖 Enter Prompt: ");
     if (!userPrompt.trim()) continue;
 
     // mcp client to AI Call making the decision
