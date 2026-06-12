@@ -22,6 +22,7 @@ async function main() {
   const mcp = new AgentMCPClient();
   const ai = new AgentClient();
 
+  // Connect to your MCP Server infrastructure
   await mcp.connect();
 
   const tools = await mcp.listTools();
@@ -37,7 +38,7 @@ async function main() {
 
     const toolSpec = ai.buildToolSpec(tools);
 
-    // message history — this is the full context window passed to the AI each turn
+    // Initialize full message history array for tracking the context window state
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user",   content: userPrompt }
@@ -45,13 +46,16 @@ async function main() {
 
     let turnCount = 0;
     let finalAnswer = null;
+    
+    // 🌟 Live visual accumulation accumulator string
+    let visualChain = ""; 
 
-    // ReAct loop
+    // Dynamic ReAct loop execution
     while (turnCount < MAX_LOOP_TURNS) {
       turnCount++;
       console.log(`\n🔄 Turn ${turnCount}`);
 
-      // call AI with full history
+      // Dispatch chat state to the local AI model with built-in network retry logic
       let aiMessage;
       let retries = 0;
       while (retries < MAX_RETRIES) {
@@ -67,44 +71,66 @@ async function main() {
 
       console.log("🧠 AI message:", JSON.stringify(aiMessage, null, 2));
 
-      // case 1: AI wants to call a tool
+      // CASE 1: AI decides to invoke an atomic tool call
       if (aiMessage.tool_calls && aiMessage.tool_calls.length > 0) {
-        const toolCall = aiMessage.tool_calls[0]; // enforce one tool at a time
+        const toolCall = aiMessage.tool_calls[0]; // Enforce single tool evaluation constraint
         const { name, arguments: args } = toolCall.function;
         const parsedArgs = typeof args === "string" ? JSON.parse(args) : args;
 
-        console.log(`⚙️  Tool call: ${name}(${parsedArgs.a}, ${parsedArgs.b})`);
+        const numA = Number(parsedArgs.a);
+        const numB = Number(parsedArgs.b);
 
-        // append AI's tool call turn to history
+        console.log(`⚙️  Tool call: ${name}(${numA}, ${numB})`);
+
+        // Record the assistant's action intent to history
         messages.push({ role: "assistant", content: null, tool_calls: [toolCall] });
 
-        // execute tool, catch errors and feed back into history
         let toolResultContent;
         try {
-          toolResultContent = await mcp.callTool(name, { a: Number(parsedArgs.a), b: Number(parsedArgs.b) });
-          console.log(`   → ${toolResultContent}`);
+          // Fire request via the MCP transport client
+          toolResultContent = await mcp.callTool(name, { a: numA, b: numB });
+          const numericResult = Number(toolResultContent);
+          
+          // 🌟 THE VISUAL INTEGRATION LAYER
+          // Progressively compile the mathematical history visual layout
+          if (visualChain === "") {
+            visualChain = `(${numA} + ${numB})`;
+          } else {
+            visualChain += ` ➔ (${numA} + ${numB})`;
+          }
+          
+          console.log(`📊 Current Accumulation: ${visualChain} = ${numericResult}`);
+
         } catch (err) {
+          // 🌟 SELF-HEALING BLOCK: Rewrite exception safely for the LLM to process next turn
           toolResultContent = `ERROR: Tool execution failed with message: "${err.message}". The previous state remains valid. Please retry this calculation step or recompute from the last successful result.`;
           console.log(`   → ⚠️  Execution captured: ${err.message}`);
         }
 
-        // append tool result to history — AI reads this next turn
+        // Return tool feedback payload back up to context window
         messages.push({
           role: "tool",
           name: name,
           content: String(toolResultContent)
         });
 
-        continue; // next turn
+        continue; // Cycle back immediately for the next turning state
       }
 
-      // case 2: AI outputs final text answer
+      // CASE 2: AI provides raw textual terminal output (The Calculation Is Fully Resolved)
       if (aiMessage.content && aiMessage.content.trim()) {
         finalAnswer = aiMessage.content.trim();
+        
+        // 🌟 Close out accumulation chain metrics visually
+        if (visualChain !== "") {
+          visualChain += ` ➔ (${finalAnswer}) 🎉`;
+          console.log(`\n📈 Complete Execution Path:\n✨ ${visualChain}`);
+        }
+        
         break;
       }
 
-      // case 3: neither tool call nor text — shouldn't happen, but guard it
+      // CASE 3: Empty response edge-case guardrail
       console.log("⚠️  AI returned empty response, retrying turn...");
       messages.push({
         role: "user",
@@ -112,6 +138,7 @@ async function main() {
       });
     }
 
+    // Display loop termination conclusion
     if (finalAnswer) {
       console.log(`\n✅ Answer: ${finalAnswer}`);
     } else {
@@ -122,6 +149,7 @@ async function main() {
     if (again.toLowerCase() !== 'yes') running = false;
   }
 
+  // Graceful application cleanup
   rl.close();
   await mcp.close();
   console.log("👋 Goodbye!");
