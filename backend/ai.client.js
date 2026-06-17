@@ -1,12 +1,15 @@
-import axios from "axios";
+import OpenAI from "openai";
+import dotenv from "dotenv";
 
+const openai = new OpenAI({
+  baseURL: "https://api.deepseek.com",
+  apiKey: "sk-0a90024144b1452a80b284011f84caa3", // your actual key
+});
 export class AgentClient {
-  constructor(modelName = "qwen2.5:7b", url = "http://localhost:11434/api/chat") {
+  constructor(modelName = "deepseek-v4-pro") {
     this.modelName = modelName;
-    this.url = url;
   }
 
-  // builds the tools array in Ollama's native function calling format
   buildToolSpec(availableTools) {
     return availableTools.map(tool => ({
       type: "function",
@@ -25,14 +28,13 @@ export class AgentClient {
     }));
   }
 
-  // single turn: sends full message history + tools, returns raw Ollama message
   async chat(messages, toolSpec) {
-    const response = await axios.post(this.url, {
+    const response = await openai.chat.completions.create({
       model: this.modelName,
       messages,
       tools: toolSpec,
       stream: false
     });
-    return response.data.message;
+    return response.choices[0].message;
   }
 }

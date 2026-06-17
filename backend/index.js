@@ -3,17 +3,23 @@ import { AgentMCPClient } from './mcp.client.js';
 import { AgentClient } from './ai.client.js';
 
 const SYSTEM_PROMPT = `You are a math execution agent. You solve multi-step math problems one step at a time.
-
 Rules:
-- Evaluate the user's request and identify the FIRST unsolved math operation.
-- Call the appropriate tool for that single operation ONLY. Do not plan ahead.
-- After receiving a tool result, re-read the full history and identify the next unsolved operation.
-- Repeat until all operations are complete.
-- When all math is done, output ONLY the final numeric answer as plain text. No explanation.
+- Identify the FIRST unsolved operation and call the appropriate tool (ACT).
+- Immediately after receiving a result, call verify(expected, actual) to confirm it (VERIFY).
+- Only proceed to the next operation after verification passes.
+- If verify returns a mismatch, redo the previous operation.
+- For multiplication, use repeated addition by adding the SAME number repeatedly.
+  Example: 6x8 means start with 0, then add 6 exactly 8 times: 
+  add(0,6)=6, add(6,6)=12, add(12,6)=18 ... until you have added 6 eight times.
+- After each add, call verify where a = the result you just received, and b = the result you just received. Both must be the same number to confirm.
+  Example: add(6,6) returns 12, so call verify(a=12, b=12).
 - Never call more than one tool per turn.
-- Never output a plan or list of steps.`;
+- Never output a plan or list of steps.
+- You are an AI agent. NEVER output text like "Veronica" or any names. NEVER embed tool calls in text content. ALWAYS use the tool_calls format exclusively.
+- When all operations are done and verified, output ONLY the final numeric answer as plain text.`;
 
-const MAX_LOOP_TURNS = 10;
+
+const MAX_LOOP_TURNS = 20;
 const MAX_RETRIES = 3;
 
 async function main() {
@@ -91,15 +97,18 @@ async function main() {
           toolResultContent = await mcp.callTool(name, { a: numA, b: numB });
           const numericResult = Number(toolResultContent);
           
-          // 🌟 THE VISUAL INTEGRATION LAYER
-          // Progressively compile the mathematical history visual layout
-          if (visualChain === "") {
-            visualChain = `(${numA} + ${numB})`;
-          } else {
-            visualChain += ` ➔ (${numA} + ${numB})`;
+          if (name === 'verify') {
+             console.log(`✅ Verify: ${toolResultContent}`);
+          } 
+          else {
+                if (visualChain === "") {
+                    visualChain = `(${numA} + ${numB})`;
+                    } 
+                else {
+                    visualChain += ` ➔ (${numA} + ${numB})`;
+                  }
+                console.log(`📊 Current Accumulation: ${visualChain} = ${numericResult}`);
           }
-          
-          console.log(`📊 Current Accumulation: ${visualChain} = ${numericResult}`);
 
         } catch (err) {
           // 🌟 SELF-HEALING BLOCK: Rewrite exception safely for the LLM to process next turn
@@ -107,12 +116,12 @@ async function main() {
           console.log(`   → ⚠️  Execution captured: ${err.message}`);
         }
 
-        // Return tool feedback payload back up to context window
-        messages.push({
-          role: "tool",
-          name: name,
-          content: String(toolResultContent)
-        });
+       messages.push({
+      role: "tool",
+      tool_call_id: toolCall.id,
+       name: name,
+       content: String(toolResultContent)
+       });
 
         continue; // Cycle back immediately for the next turning state
       }
