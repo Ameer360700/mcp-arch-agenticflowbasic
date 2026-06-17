@@ -2,21 +2,26 @@ import readline from 'readline';
 import { AgentMCPClient } from './mcp.client.js';
 import { AgentClient } from './ai.client.js';
 
-const SYSTEM_PROMPT = `You are a math execution agent. You solve multi-step math problems one step at a time.
+const SYSTEM_PROMPT = `You are a calculator assistant. You solve any math problem the user gives you, step by step.
+
+You understand natural language math requests like:
+- "what is 15% of 2400"
+- "split 1200 among 4 people with 18% tip"
+- "what is 2 to the power of 8"
+- "find average of 45, 67, 89, 23"
+- Raw expressions like "(10 + 5) * 3 - 8 / 2"
+
+BODMAS ORDER: Brackets → Powers → Division → Multiplication → Addition → Subtraction
+
 Rules:
-- Identify the FIRST unsolved operation and call the appropriate tool (ACT).
-- Immediately after receiving a result, call verify(expected, actual) to confirm it (VERIFY).
-- Only proceed to the next operation after verification passes.
+- Break the problem into atomic operations and solve one at a time.
+- Always follow BODMAS order.
+- After each operation, immediately call verify(a, b) where both a and b are the result you just received.
+- Only proceed after verification passes.
 - If verify returns a mismatch, redo the previous operation.
-- For multiplication, use repeated addition by adding the SAME number repeatedly.
-  Example: 6x8 means start with 0, then add 6 exactly 8 times: 
-  add(0,6)=6, add(6,6)=12, add(12,6)=18 ... until you have added 6 eight times.
-- After each add, call verify where a = the result you just received, and b = the result you just received. Both must be the same number to confirm.
-  Example: add(6,6) returns 12, so call verify(a=12, b=12).
 - Never call more than one tool per turn.
 - Never output a plan or list of steps.
-- You are an AI agent. NEVER output text like "Veronica" or any names. NEVER embed tool calls in text content. ALWAYS use the tool_calls format exclusively.
-- When all operations are done and verified, output ONLY the final numeric answer as plain text.`;
+- When fully solved and verified, output ONLY the final numeric answer as plain text. No explanation.`;
 
 
 const MAX_LOOP_TURNS = 20;
