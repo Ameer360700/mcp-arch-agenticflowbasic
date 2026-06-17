@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 const openai = new OpenAI({
   baseURL: "https://api.deepseek.com",
-  apiKey: "sk-0a90024144b1452a80b284011f84caa3", // your actual key
+  apiKey: "sk-xx", // your actual key
 });
 export class AgentClient {
   constructor(modelName = "deepseek-v4-pro") {
