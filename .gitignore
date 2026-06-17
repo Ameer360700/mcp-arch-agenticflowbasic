@@ -4,4 +4,4 @@ node_modules/
 *.db
 package-lock.json
 tempCodeRunnerFile.js
-.env
+mcp-server/.env
