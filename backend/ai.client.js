@@ -19,7 +19,7 @@ export class AgentClient {
       parameters: {
         type: "object",
         properties: {
-          a: { type: "number", description: "First number or primary input" },
+          a: { type: "string", description: "First input (number or constant name)" },
           b: { type: "number", description: "Second number (if required)" }
         },
         required: ["a"]

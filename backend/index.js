@@ -41,7 +41,11 @@ async function main() {
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const askUser = (q) => new Promise(resolve => rl.question(q, resolve));
-
+  // Persistent conversation memory across prompts
+  const messages = [
+  { role: "system", content: SYSTEM_PROMPT }
+  ];
+  let lastAnswer = null;
   let running = true;
   while (running) {
     const userPrompt = await askUser("\nEnter prompt: ");
@@ -49,11 +53,14 @@ async function main() {
 
     const toolSpec = ai.buildToolSpec(tools);
 
-    // Initialize full message history array for tracking the context window state
-    const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user",   content: userPrompt }
-    ];
+    const referenceWords = ['that', 'it', 'the result', 'previous answer', 'this'];
+    const isConnected = referenceWords.some(word => userPrompt.toLowerCase().includes(word));
+
+    const userContent = isConnected && lastAnswer
+     ? `${userPrompt} (previous answer was ${lastAnswer})`
+     : userPrompt;
+
+     messages.push({ role: "user", content: userContent });
 
     let turnCount = 0;
     let finalAnswer = null;
@@ -88,7 +95,7 @@ async function main() {
         const { name, arguments: args } = toolCall.function;
         const parsedArgs = typeof args === "string" ? JSON.parse(args) : args;
 
-        const numA = Number(parsedArgs.a);
+        const numA = isNaN(Number(parsedArgs.a)) ? parsedArgs.a : Number(parsedArgs.a);
         const numB = Number(parsedArgs.b);
 
         console.log(`⚙️  Tool call: ${name}(${numA}, ${numB})`);
@@ -105,14 +112,19 @@ async function main() {
           if (name === 'verify') {
              console.log(`✅ Verify: ${toolResultContent}`);
           } 
-          else {
-                if (visualChain === "") {
-                    visualChain = `(${numA} + ${numB})`;
-                    } 
-                else {
-                    visualChain += ` ➔ (${numA} + ${numB})`;
-                  }
-                console.log(`📊 Current Accumulation: ${visualChain} = ${numericResult}`);
+         else {
+           const operator = name === 'subtract' ? '-' 
+           : name === 'multiply' ? '×' 
+           : name === 'divide' ? '÷' 
+           : '+';
+  
+           if (visualChain === "") {
+              visualChain = isNaN(numB) ? `${name}(${numA})` : `(${numA} ${operator} ${numB})`;
+           } 
+           else {
+              visualChain += isNaN(numB) ? ` ➔ ${name}(${numA})` : ` ➔ (${numA} ${operator} ${numB})`;
+           }
+              console.log(`📊 Current Accumulation: ${visualChain} = ${numericResult}`);
           }
 
         } catch (err) {
@@ -155,6 +167,8 @@ async function main() {
     // Display loop termination conclusion
     if (finalAnswer) {
       console.log(`\n✅ Answer: ${finalAnswer}`);
+      lastAnswer = finalAnswer;
+      messages.push({ role: "assistant", content: `The answer is ${finalAnswer}` });
     } else {
       console.log(`\n⚠️  Loop ended without a final answer after ${MAX_LOOP_TURNS} turns.`);
     }
